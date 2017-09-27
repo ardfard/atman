@@ -1,0 +1,52 @@
+name:    atman
+version: "0.0.0"
+
+dependencies:
+- base
+- cron
+- yesod-core
+- yesod-persistent
+- protolude
+- resourcet
+- persistent
+- persistent-postgresql
+- monad-logger
+- unix
+
+default-extensions: 
+- NoImplicitPrelude
+- OverloadedStrings
+- DeriveGeneric
+- GADTs
+- FlexibleContexts
+- RankNTypes
+- RecordWildCards
+- GeneralizedNewtypeDeriving
+- MultiParamTypeClasses
+- TypeFamilies
+
+# The library contains all of our application code. The executable
+# defined below is just a thin wrapper.
+library:
+  source-dirs: src
+  dependencies:
+  - cryptonite
+  - HandsomeSoup
+  - http-conduit
+  - hxt
+  - hxt-curl
+  - parsec
+  - persistent-template
+  - regex-compat-tdfa
+
+# Runnable executable for our application
+executables:
+  atman:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - atman

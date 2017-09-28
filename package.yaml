@@ -11,6 +11,8 @@ dependencies:
 - persistent
 - persistent-postgresql
 - monad-logger
+- monad-control
+- mtl
 - unix
 
 default-extensions: 

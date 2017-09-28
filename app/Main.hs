@@ -5,6 +5,7 @@ import Atman.Prelude
 import Atman.Model
 import Atman.Crawler (crawl)
 import Control.Monad.Trans.Resource (runResourceT)
+import Control.Monad.Trans.Control (control)
 import Control.Monad.Logger (runStdoutLoggingT, logInfoN, logDebugN)
 import           Database.Persist.Postgresql
 import System.Environment (lookupEnv)
@@ -15,19 +16,24 @@ main :: IO ()
 main = do 
   connStr <- maybe "host=localhost dbname=test user=test password=test port=5432" identity <$> lookupEnv "DB_CONN" 
   runStdoutLoggingT $ withPostgresqlPool (toS connStr) 10 $ \pool -> do 
-    liftIO $ do
+    control $ \runInIO ->  do
       runResourceT $ flip runSqlPool pool $ do
           runMigration migrateAll
-      tids <- execSchedule $ addJob (crawlAndPost pool) "* * * * *"
-      end  <- newEmptyMVar
-      installHandler keyboardSignal (putMVar end ()) Nothing
+      runInIO $ logInfoN "Initializing crawlers"
+      print "Starting program" 
+      publishChan <- newChan
+      tids <- execSchedule $ addJob (runInIO $ crawlAndPost publishChan pool) "* * * * *"
+      runInIO $ logInfoN "starting web server on port 3000"
+      end <- newEmptyMVar
+      installHandler keyboardSignal (Catch $ putMVar end ()) Nothing
       race_ 
        (do 
          takeMVar end
          mapM_ killThread tids )
-       (warp 3000 $ App  pool)
-  where crawlAndPost pool = do
-          item <- runStdoutLoggingT . runResourceT  $ runReaderT  crawl  pool
-          print item
+       ( concurrently_ (publish publishChan) $ startServer pool )
+  where crawlAndPost  c pool = liftIO . writeChan c  =<< runResourceT  ( runReaderT  crawl  pool )
+        startServer pool = warp 3000 $ App pool
+        publish c = void . forever $ print =<< readChan c
+
 
 

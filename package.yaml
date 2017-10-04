@@ -32,14 +32,23 @@ default-extensions:
 library:
   source-dirs: src
   dependencies:
+  - aeson
   - cryptonite
+  - fb
+  - exceptions
   - HandsomeSoup
   - http-conduit
+  - http-client
+  - http-client-tls
+  - http-types
   - hxt
   - hxt-curl
   - parsec
   - persistent-template
   - regex-compat-tdfa
+  - text
+  - transformers
+  - wai
 
 # Runnable executable for our application
 executables:

@@ -1,1 +1,3 @@
 /              HomeR GET
+/users         UserR PATCH
+/fb-redir      FbRedirectUrl GET

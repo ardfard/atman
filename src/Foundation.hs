@@ -8,11 +8,17 @@ import Yesod.Persist.Core
 import Database.Persist.Sql (ConnectionPool, runSqlPool, SqlBackend)
 import Database.Persist
 
-data App = App { connPool :: ConnectionPool }
+data App = App { connPool :: ConnectionPool
+               , fbAppName :: Text
+               , fbAppId :: Text
+               , fbAppSecret :: Text
+               }
 
 mkYesodData "App" $(parseRoutesFile "routes")
 
-instance Yesod App 
+instance Yesod App where
+  approot = ApprootRequest $ \app req ->
+        getApprootText guessApproot app req
 
 instance YesodPersist App where
   type YesodPersistBackend App = SqlBackend

@@ -1,6 +1,7 @@
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE FlexibleInstances          #-}
 
 module Atman.Model where
 
@@ -8,6 +9,8 @@ import Atman.Prelude
 import Database.Persist
 import Database.Persist.TH
 import Database.Persist.Sql ( runSqlPool)
+import Yesod.Core.Json (ToJSON, FromJSON)
+import Foundation (App(..))
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Item
@@ -16,8 +19,14 @@ Item
   digest Text
   Digest digest
   deriving Show
+User
+  username Text
+  facebookAccessToken ByteString Maybe
+  FacebookAccessToken facebookAccessToken !force
+  Username username
+  deriving Show
 |]
 
 runDb action = do
-                pool <- ask
+                pool <- asks connPool
                 runSqlPool action pool

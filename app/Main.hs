@@ -1,20 +1,20 @@
-import Application () -- for YesodDispatch instance
+import Application (makeFoundation) -- for YesodDispatch instance
 import Foundation
 import Yesod.Core
 import Atman.Prelude
 import Atman.Model
-import Atman.Crawler (crawl)
+import Atman (crawl, publish)
 import Control.Monad.Trans.Resource (runResourceT)
 import Control.Monad.Trans.Control (control)
-import Control.Monad.Logger (runStdoutLoggingT, logInfoN, logDebugN)
+import Control.Monad.Logger (runStdoutLoggingT, logInfoN, logErrorN, logDebugN)
 import           Database.Persist.Postgresql
-import System.Environment (lookupEnv)
 import System.Cron (execSchedule, addJob)
+import System.Environment (lookupEnv)
 import System.Posix.Signals
 
 main :: IO ()
-main = do 
-  connStr <- maybe "host=localhost dbname=test user=test password=test port=5432" identity <$> lookupEnv "DB_CONN" 
+main = do
+  connStr <- maybe "host=localhost dbname=atman user=atman password=testing port=5432" identity <$> lookupEnv "DB_CONN" 
   runStdoutLoggingT $ withPostgresqlPool (toS connStr) 10 $ \pool -> do 
     control $ \runInIO ->  do
       runResourceT $ flip runSqlPool pool $ do
@@ -22,18 +22,23 @@ main = do
       runInIO $ logInfoN "Initializing crawlers"
       print "Starting program" 
       publishChan <- newChan
-      tids <- execSchedule $ addJob (runInIO $ crawlAndPost publishChan pool) "* * * * *"
-      runInIO $ logInfoN "starting web server on port 3000"
+      app <- makeFoundation pool
+      tids <- execSchedule $ addJob (runInIO $ crawlWorker publishChan app) "0 * * * *"
+      runInIO . logInfoN $ "starting web server on port " <> show port 
       end <- newEmptyMVar
       installHandler keyboardSignal (Catch $ putMVar end ()) Nothing
       race_ 
-       (do 
+        (do 
          takeMVar end
          mapM_ killThread tids )
-       ( concurrently_ (publish publishChan) $ startServer pool )
-  where crawlAndPost  c pool = liftIO . writeChan c  =<< runResourceT  ( runReaderT  crawl  pool )
-        startServer pool = warp 3000 $ App pool
-        publish c = void . forever $ print =<< readChan c
-
-
-
+       ( concurrently_ (runInIO $ publishWorker publishChan app) $  startServer app )
+  where crawlWorker c app = do 
+          eitem <- runAtman app crawl
+          either logErrorN (liftIO . writeChan c) eitem
+        runAtman app action = runExceptT . runResourceT $ runReaderT action app
+        port = 5000
+        startServer = warp port 
+        publishWorker c app = forever $ do 
+          item  <- liftIO $ readChan c
+          eres <- runAtman app $ publish item
+          either logErrorN (const $ logInfoN $ "Published :" <> show item ) eres 

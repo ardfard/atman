@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE ViewPatterns      #-}
+{-# LANGUAGE CPP   #-}
+
 module Foundation where
 
 import Atman.Prelude
@@ -17,8 +18,12 @@ data App = App { connPool :: ConnectionPool
 mkYesodData "App" $(parseRoutesFile "routes")
 
 instance Yesod App where
+#if PRODUCTION
+  approot = "ngublag.com/atman"
+#else
   approot = ApprootRequest $ \app req ->
         getApprootText guessApproot app req
+#endif
 
 instance YesodPersist App where
   type YesodPersistBackend App = SqlBackend

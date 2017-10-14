@@ -31,6 +31,9 @@ default-extensions:
 # defined below is just a thin wrapper.
 library:
   source-dirs: src
+  when:
+      - condition: flag(production)
+        then: cpp-options: -DPRODUCTION
   dependencies:
   - aeson
   - cryptonite

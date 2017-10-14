@@ -27,13 +27,21 @@ default-extensions:
 - MultiParamTypeClasses
 - TypeFamilies
 
+flags:
+  production: 
+    description: To set production environment
+    default: false
+    manual: false
 # The library contains all of our application code. The executable
 # defined below is just a thin wrapper.
 library:
   source-dirs: src
   when:
-      - condition: flag(production)
-        then: cpp-options: -DPRODUCTION
+  - condition: flag(production)
+    then: 
+      cpp-options: -DPRODUCTION
+    else:
+      cpp-options: -DNOTPRODUCTION
   dependencies:
   - aeson
   - cryptonite

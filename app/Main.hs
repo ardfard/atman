@@ -23,7 +23,7 @@ main = do
       print "Starting program" 
       publishChan <- newChan
       app <- makeFoundation pool
-      tids <- execSchedule $ addJob (runInIO $ crawlWorker publishChan app) "0 * * * *"
+      tids <- execSchedule $ addJob (runInIO $ crawlWorker publishChan app) "0 */8 * * *"
       runInIO . logInfoN $ "starting web server on port " <> show port 
       end <- newEmptyMVar
       installHandler keyboardSignal (Catch $ putMVar end ()) Nothing

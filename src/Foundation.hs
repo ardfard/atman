@@ -19,7 +19,7 @@ mkYesodData "App" $(parseRoutesFile "routes")
 
 instance Yesod App where
 #if PRODUCTION
-  approot = ApprootStatic "https://ngublag.com/atman"
+  approot = ApprootStatic "https://www.ngublag.com/atman"
 #else
   approot = ApprootRequest $ \app req ->
         getApprootText guessApproot app req

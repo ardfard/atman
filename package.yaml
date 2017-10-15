@@ -38,10 +38,7 @@ library:
   source-dirs: src
   when:
   - condition: flag(production)
-    then: 
-      cpp-options: -DPRODUCTION
-    else:
-      cpp-options: -DNOTPRODUCTION
+    cpp-options: -DPRODUCTION
   dependencies:
   - aeson
   - cryptonite

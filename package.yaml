@@ -14,8 +14,10 @@ dependencies:
 - monad-control
 - mtl
 - unix
+- lifted-base
 
-default-extensions: 
+
+default-extensions:
 - NoImplicitPrelude
 - OverloadedStrings
 - DeriveGeneric
@@ -26,9 +28,10 @@ default-extensions:
 - GeneralizedNewtypeDeriving
 - MultiParamTypeClasses
 - TypeFamilies
+- UnicodeSyntax
 
 flags:
-  production: 
+  production:
     description: To set production environment
     default: false
     manual: false
@@ -54,6 +57,8 @@ library:
   - parsec
   - persistent-template
   - regex-compat-tdfa
+  - telegram-api >= 0.6.3.0
+  - servant-server
   - text
   - transformers
   - wai

@@ -1,21 +1,21 @@
 
 module Atman.Fetcher.Hackernews where
 
-import Atman.Prelude
-import Atman.Model
-import GHC.Base (String)
-import Text.XML.HXT.Core 
-import Text.XML.HXT.Curl
-import Text.HandsomeSoup
-import Network.HTTP.Simple 
-import Crypto.Hash (hash, Digest, MD5)
-import Text.Parsec (many1, digit, spaces, string, parse)
+import           Atman.Model
+import           Atman.Prelude       hiding (hash)
+import           Crypto.Hash         (Digest, MD5, hash)
+import           GHC.Base            (String)
+import           Network.HTTP.Simple
+import           Text.HandsomeSoup
+import           Text.Parsec         (digit, many1, parse, spaces, string)
+import           Text.XML.HXT.Core
+import           Text.XML.HXT.Curl
 
 
-hackernewsUrl :: String
+hackernewsUrl ∷ String
 hackernewsUrl = "https://news.ycombinator.com"
 
-getHNContents :: IO [Item]
+getHNContents ∷ IO [Item]
 getHNContents = do
   scores <- runX $ table >>> getScores
   lt <- runX $ table >>> getLinksTexts
@@ -30,10 +30,10 @@ getHNContents = do
     table = doc >>> css "table.itemlist"
     getLinksTexts =  css "a.storylink" >>> (getAttrValue "href"  &&& deep getText)
     getScores = css "td.subtext" >>> css "span:first-child" //> getText >>> arr (fromMaybe 0 . parseScore)
-    getDigest :: String -> Digest MD5
+    getDigest ∷ String → Digest MD5
     getDigest l =  hash (toS l :: ByteString)
 
-parseScore :: String -> Maybe Int
+parseScore ∷ String → Maybe Int
 parseScore s = readMaybe =<< rightToMaybe (parse parser "" s)
-  where 
+  where
     parser = many1 digit <* spaces <* string "point"

@@ -22,7 +22,6 @@ Item
 User
   username Text
   facebookAccessToken ByteString Maybe
-  FacebookAccessToken facebookAccessToken !force
   Username username
   deriving Show
 |]

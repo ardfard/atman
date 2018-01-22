@@ -1,16 +1,15 @@
-{-# LANGUAGE TemplateHaskell      #-}
-{-# LANGUAGE ViewPatterns         #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Application where
 
-import Foundation
-import Atman.Prelude
-import Yesod.Core
-import System.Environment (lookupEnv)
-import Database.Persist.Sql (ConnectionPool)
+import           Atman.Prelude
+import           Database.Persist.Sql (ConnectionPool)
+import           Foundation
+import           System.Environment   (lookupEnv)
+import           Yesod.Core
 
-import Handler
+import           Handler
 
 mkYesodDispatch "App" resourcesApp
 

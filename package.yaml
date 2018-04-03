@@ -58,7 +58,6 @@ library:
   - persistent-template
   - regex-compat-tdfa
   - telegram-api >= 0.6.3.0
-  - servant-server
   - text
   - transformers
   - wai

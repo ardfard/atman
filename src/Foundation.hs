@@ -1,18 +1,20 @@
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE CPP   #-}
+{-# LANGUAGE CPP             #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Foundation where
 
-import Atman.Prelude
-import Yesod.Core
-import Yesod.Persist.Core
-import Database.Persist.Sql (ConnectionPool, runSqlPool, SqlBackend)
-import Database.Persist
+import           Atman.Prelude
+import           Database.Persist
+import           Database.Persist.Sql (ConnectionPool, SqlBackend, runSqlPool)
+import           Yesod.Core
+import           Yesod.Persist.Core
 
-data App = App { connPool :: ConnectionPool
-               , fbAppName :: Text
-               , fbAppId :: Text
-               , fbAppSecret :: Text
+data App = App { connPool       :: ConnectionPool
+               , fbAppName      :: Text
+               , fbAppId        :: Text
+               , fbAppSecret    :: Text
+               , telegramChatId :: Int64
+               , telegramToken  :: Text
                }
 
 mkYesodData "App" $(parseRoutesFile "routes")

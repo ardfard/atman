@@ -1,5 +1,5 @@
 import           Application                  (makeFoundation)
-import           Atman                        (start)
+import qualified Atman                     as Atman
 import           Atman.Model
 import           Atman.Prelude
 import           Control.Monad.Logger         (runStdoutLoggingT)
@@ -19,7 +19,7 @@ main = do
     control $ \runInIO -> do
       runResourceT $ flip runSqlPool pool $ runMigration migrateAll
       app <- makeFoundation pool
-      tids <- runInIO $ start app
+      tids <- runInIO $ Atman.startWorkers app
       end <- newEmptyMVar
       installHandler keyboardSignal (Catch $ putMVar end ()) Nothing
       race_

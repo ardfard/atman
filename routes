@@ -1,3 +1,4 @@
 /              HomeR GET
 /users         UserR PATCH
 /fb-redir      FbRedirectUrl GET
+/telegram-webhooks      TelegramWebhooks POST

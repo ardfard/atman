@@ -19,4 +19,6 @@ makeFoundation pool = liftIO $ do
   id_ <- fromMaybe "" <$> lookupEnv "FB_APP_ID"
   name <- fromMaybe "" <$> lookupEnv "FB_APP_NAME"
   secret <- fromMaybe "" <$> lookupEnv "FB_APP_SECRET"
-  return $ App pool (toS name) (toS id_) (toS secret)
+  chatId <- fromMaybe "" <$> lookupEnv "TELEGRAM_CHAT_ID"
+  token <- fromMaybe "" <$> lookupEnv "TELEGRAM_TOKEN"
+  return $ App pool (toS name) (toS id_) (toS secret) (fromMaybe 0 . readMaybe $ chatId) (toS token)

@@ -3,7 +3,6 @@
 
 module Atman
     ( startWorkers
-    , publish
     , crawl
     , sendTelegramMessage
     ) where
@@ -19,6 +18,7 @@ import           Control.Monad.Trans.Control  (control)
 import           Control.Monad.Trans.Except   (ExceptT (..), runExceptT)
 import           Control.Monad.Trans.Resource (MonadBaseControl, runResourceT)
 import           Data.Aeson                   (Value, decodeStrict, encode)
+import qualified Data.Text                    as T
 import           Database.Persist.Sql         (entityVal, getBy, insert,
                                                insertBy)
 import           Facebook                     (( #= ))
@@ -28,7 +28,6 @@ import           Network.HTTP.Client          (newManager)
 import           Network.HTTP.Client.TLS      (tlsManagerSettings)
 import           System.Cron                  (addJob, execSchedule)
 import           Utility                      (runAction)
-import qualified Data.Text as T
 import qualified Web.Telegram.API.Bot         as Telegram
 
 type Atman a = forall m . ( MonadBaseControl IO m
@@ -73,17 +72,15 @@ sendTelegramMessage chatId (Item url desc _) = do
       , "[Article](", url,")"
       ]
 
-telegramPublish ∷ Chan Item → User → Atman()
-telegramPublish chan user =
-  forever $ do
-    App{..} <- ask
-    item <- liftIO . readChan $ chan
-    mgr <- liftIO $ newManager tlsManagerSettings
-    liftIO $ Telegram.runTelegramClient (Telegram.Token telegramToken) mgr (sendTelegramMessage (Telegram.ChatId telegramChatId) item)
-    return ()
+telegramPublish ∷ Item → User → Atman ()
+telegramPublish item user = do
+  App{..} <- ask
+  mgr <- liftIO $ newManager tlsManagerSettings
+  liftIO $ Telegram.runTelegramClient (Telegram.Token telegramToken) mgr (sendTelegramMessage (Telegram.ChatId telegramChatId) item)
+  return ()
 
-facebookPublish ∷ Chan Item → User → Atman()
-facebookPublish  c user =
+facebookPublish ∷ Item → User → Atman ()
+facebookPublish (Item url desc _) user =
   case etoken of
     Right token -> do
       App{..} <- ask
@@ -91,31 +88,16 @@ facebookPublish  c user =
                                   , appId = fbAppId
                                   , appSecret = fbAppSecret }
       mgr <- liftIO $ newManager tlsManagerSettings
-      forever $ do
-        (Item url desc _) <- liftIO . readChan $ c
-        val :: Value <- runResourceT $ Fb.runFacebookT fbCred mgr $ postToFeed url desc token
-        $(logInfo) (show val)
-    Left e -> return ()
-
-  where etoken = do
-                  bsToken <- maybeToRight "No access token found" . userFacebookAccessToken $ user
-                  maybeToRight "decode access failed" $ decodeToken bsToken
-        decodeToken ∷ ByteString → Maybe Fb.UserAccessToken
-        decodeToken = decodeStrict
-        postToFeed desc url = Fb.postObject "/me/feed" ["message" #= desc, "link" #= url]
-
-
-publish ∷  Chan Item → Atman ()
-publish chan  = do
-  muser <- getAtmanUser
-  case entityVal <$> muser of
-    (Just user) -> mapM_ (publishToUser user) [facebookPublish, telegramPublish]
-    _           -> return ()
-  where getAtmanUser = runDb $ getBy (Username "atman_user")
-        publishToUser user worker = do
-          chanDup <- liftIO . dupChan $ chan
-          worker chanDup user
-
+      val :: Value <- runResourceT $ Fb.runFacebookT fbCred mgr $ postToFeed url desc token
+      $(logInfo) (show val)
+    Left e -> throwError e
+  where
+    etoken = do
+      bsToken <- maybeToRight "No access token found" . userFacebookAccessToken $ user
+      maybeToRight "decode access failed" $ decodeToken bsToken
+    decodeToken ∷ ByteString → Maybe Fb.UserAccessToken
+    decodeToken = decodeStrict
+    postToFeed desc url = Fb.postObject "/me/feed" ["message" #= desc, "link" #= url]
 
 init ∷ Atman ()
 init = void . runDb $ insertBy (User "atman_user" Nothing)
@@ -128,12 +110,27 @@ startWorkers app = do
 
     -- periodically crawl sources
     tids <- execSchedule $ addJob (runInIO $ crawlWorker chan ) "0 */8 * * *"
-
-    -- start publisher worker
-    tid <- forkIO . runInIO . void $ runAtman app (publish chan)
-    return $ tid:tids
+    euser <- runAtman app getAtmanUser
+    case entityVal <$> euser of
+      Left e -> runInIO (logErrorN e) >> return tids
+      (Right user) -> do
+        -- start publisher worker
+        tid <- forkIO . forever $ do
+            item <- readChan chan
+            traverse_ (forkIO . runInIO . publish item user)  [facebookPublish, telegramPublish]
+        return $ tid:tids
   where
     runAtman app = runExceptT . flip runReaderT app . runResourceT
+    getAtmanUser = do
+      muser <- runDb $ getBy (Username "atman_user")
+      case muser of
+        Nothing     -> throwError "User not found"
+        (Just user) -> return user
+    publish item user publisher = do
+      eres <- runAtman app (publisher item user)
+      case eres of
+        Left e -> logErrorN e
+        _      -> return ()
     crawlWorker c = do
       eitem <- runAtman app crawl
       case eitem of

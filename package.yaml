@@ -54,6 +54,7 @@ library:
   - http-types
   - hxt
   - hxt-curl
+  - monadIO
   - parsec
   - persistent-template
   - regex-compat-tdfa

@@ -122,7 +122,7 @@ startWorkers app = do
             traverse_ (forkIO . runInIO . publish item user)  [facebookPublish, telegramPublish]
         return $ tid:tids
   where
-    cronSchedule = "* * * * *"
+    cronSchedule = "* */8 * * *"
     runAtman app = runExceptT . flip runReaderT app . runResourceT
     getAtmanUser = do
       muser <- runDb $ getBy (Username "atman_user")

@@ -1,5 +1,5 @@
 import           Application                  (makeFoundation)
-import qualified Atman                     as Atman
+import qualified Atman                        as Atman
 import           Atman.Model
 import           Atman.Prelude
 import           Control.Monad.Logger         (runStdoutLoggingT)
@@ -22,6 +22,7 @@ main = do
       tids <- runInIO $ Atman.startWorkers app
       end <- newEmptyMVar
       installHandler keyboardSignal (Catch $ putMVar end ()) Nothing
+      putText $ "Starting server on port " <> show port <> "\n"
       race_
         (takeMVar end >> mapM_ killThread tids) $
         startServer app

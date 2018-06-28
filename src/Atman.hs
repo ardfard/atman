@@ -5,6 +5,9 @@ module Atman
     ( startWorkers
     , crawl
     , sendTelegramMessage
+    , facebookPublish
+    , telegramPublish
+    , Atman
     ) where
 
 
@@ -27,7 +30,6 @@ import           Foundation                   (App (..))
 import           Network.HTTP.Client          (newManager)
 import           Network.HTTP.Client.TLS      (tlsManagerSettings)
 import           System.Cron                  (addJob, execSchedule)
-import           Utility                      (runAction)
 import qualified Web.Telegram.API.Bot         as Telegram
 
 type Atman a = forall m . ( MonadBaseControl IO m
@@ -76,7 +78,7 @@ telegramPublish ∷ Item → User → Atman ()
 telegramPublish item user = do
   App{..} <- ask
   mgr <- liftIO $ newManager tlsManagerSettings
-  liftIO $ Telegram.runTelegramClient (Telegram.Token telegramToken) mgr (sendTelegramMessage (Telegram.ChatId telegramChatId) item)
+  liftIO $ Telegram.runTelegramClient (Telegram.Token $ "bot" <> telegramToken) mgr (sendTelegramMessage (Telegram.ChatId telegramChatId) item)
   return ()
 
 facebookPublish ∷ Item → User → Atman ()
@@ -88,7 +90,7 @@ facebookPublish (Item url desc _) user =
                                   , appId = fbAppId
                                   , appSecret = fbAppSecret }
       mgr <- liftIO $ newManager tlsManagerSettings
-      val :: Value <- runResourceT $ Fb.runFacebookT fbCred mgr $ postToFeed url desc token
+      val :: Value <- runResourceT . Fb.runFacebookT fbCred mgr $ postToFeed token
       $(logInfo) (show val)
     Left e -> throwError e
   where
@@ -97,7 +99,7 @@ facebookPublish (Item url desc _) user =
       maybeToRight "decode access failed" $ decodeToken bsToken
     decodeToken ∷ ByteString → Maybe Fb.UserAccessToken
     decodeToken = decodeStrict
-    postToFeed desc url = Fb.postObject "/me/feed" ["message" #= desc, "link" #= url]
+    postToFeed = Fb.postObject "/me/feed" ["message" #= desc, "link" #= url]
 
 init ∷ Atman ()
 init = void . runDb $ insertBy (User "atman_user" Nothing)
@@ -109,7 +111,7 @@ startWorkers app = do
     chan <- newChan
 
     -- periodically crawl sources
-    tids <- execSchedule $ addJob (runInIO $ crawlWorker chan ) "0 */8 * * *"
+    tids <- execSchedule $ addJob (runInIO $ crawlWorker chan ) cronSchedule
     euser <- runAtman app getAtmanUser
     case entityVal <$> euser of
       Left e -> runInIO (logErrorN e) >> return tids
@@ -120,6 +122,7 @@ startWorkers app = do
             traverse_ (forkIO . runInIO . publish item user)  [facebookPublish, telegramPublish]
         return $ tid:tids
   where
+    cronSchedule = "* * * * *"
     runAtman app = runExceptT . flip runReaderT app . runResourceT
     getAtmanUser = do
       muser <- runDb $ getBy (Username "atman_user")
